@@ -1,0 +1,466 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<script src="jquery.js"></script>
+	<script src="camonitor.js"></script>
+	
+	<script type="text/javascript">
+	window.onload = function () {
+		var elem = this;
+		var pvs = ["SR07BM01FPM01:FILL_PATTERN_ABS_WAVEFORM_MONITOR"];
+		//var pvs = ["BR01PSC01:CHANNEL_A_MONITOR"];
+		var ws = new WebSocket("ws://localhost:8888/monitor");
+		//var ws = new WebSocket("ws://10.6.0.33:8888/monitor");
+		
+		var newY = [];
+
+		ws.onopen = function() {
+			for (var i = 0; i < pvs.length; i++) {		
+				ws.send(pvs[i]);
+			}
+    		};
+		
+		ws.onmessage = function(evt) {
+      			var data = JSON.parse(evt.data);
+      			if (data.msg_type === "monitor") {
+				if (data.pvname === "SR07BM01FPM01:FILL_PATTERN_ABS_WAVEFORM_MONITOR"){
+				//if (data.pvname === "BR01PSC01:CHANNEL_A_MONITOR"){
+					newY = data.value;
+				}
+      			}
+		};
+	
+		var dps = []; // dataPoints
+		var dps2 = [];
+
+		var chart = new CanvasJS.Chart("chartContainer",{
+			backgroundColor: "#000000",
+			textColor: "#2f4f4f",
+			axisY:{
+			minimum: 0,
+			maximum: .9
+			},
+			axisX:{
+			minimum: 0,
+			maximum: 359
+			},
+			//title :{
+			//	text: "Fill Pattern Monitor"
+			//},			
+			data: [{
+				
+				color: "#2125B0",
+				type: "column",
+				dataPoints: dps 
+			}]
+		});
+
+
+		var xVal = 0;
+		var yVal = 1;	
+		var updateInterval = 1000;
+		var dataLength = 359; // number of RF Buckets-1
+
+		var updateChart = function (count) {
+
+			count = count;
+			//Count should always be number of RF buckets
+			xVal=0;
+			
+			for (var j = 0; j < count; j++) {
+				if (typeof newY[0] === 'undefined'){
+					yVal = 0;
+				}else{
+				yVal = newY[j];
+				}
+				dps[j]=({x: xVal, y: yVal});
+				xVal++;
+			};			
+			chart.render();
+		};
+
+		// generates first set of dataPoints
+		//updateChart(dataLength); 
+ 
+		//Set update to 1 Hz.
+		setInterval(function(){updateChart(dataLength)}, updateInterval); 
+
+
+	}
+	</script>
+	<script type="text/javascript" src="./canvasjs.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="./masterstatus.css">
+</head>
+<title>SLSA Master Status</title>
+<body>
+	<!Top row is its own thing->
+	<div class="topTable">
+	<center><table>
+		<tr>
+			<td class="label">Beam Current: </td>
+			<td class="monitor" data-pv="SR11BCM01:CURRENT_MONITOR"></td>
+			<td class="label"> mA </td>
+		</tr>
+
+	</table></center></div>
+
+	<!Next row displaying general/topup/beam stats->
+	<div class="topTable">
+	<center><table>
+	<tr>
+	<td>	
+	<div class="table1">
+	<fieldset class="qtBorder"><legend class = "qtLabel">General:</legend>
+	<table>
+		<tr>
+			<td class="label">Lifetime:</td>
+			<td class="monitor" data-pv="SR11BCM01:LIFETIME_MONITOR"></td>
+			<td class="label">Hrs</td>
+		</tr>
+		<tr>
+			<td class="label">BR2SR Eff:</td>
+			<td class="monitor" data-pv="SR00IE01:INJECTION_EFFICIENCY_MONITOR"></td>
+			<td class="label">%</td>
+		</tr>
+		<tr>
+			<td class="label">Curr. Eff:</td>
+			<td class="monitor" data-pv="SR00IE02:TOPUP_CURRENT_VALUE"></td>
+			<td class="label">%</td>
+		</tr>
+		<tr>
+			<td class="label">Prev. Eff:</td>
+			<td class="monitor" data-pv="SR00IE02:TOPUP_PREVIOUS_VALUE"></td>
+			<td class="label">%</td>
+		</tr>
+		<tr>
+			<td class="label">RF:</td>
+			<td class="monitor" data-pv="SR00MOS01:FREQUENCY_MONITOR"></td>
+			<td class="label">Hz</td>
+		</tr>
+
+	</table></div></fieldset>
+	</td>
+	<td>
+	<div class = "table1">
+	<fieldset class="qtBorder"><legend class="qtLabel">Top Up:</legend>
+	<table>
+		<tr>
+			<td class="label">Topup Interlock:</td>
+			<td class="monitor" data-pv="TS01TU01:TOPUP_INHIBIT_STATUS"></td>
+			<td class="label"> </td>
+		</tr>
+		<tr>
+			<td class="label">Fill Status:</td>
+			<td class="monitor" data-pv="TS01FPC01:FILL_STATUS"></td>
+			<td class="label"></td>
+		</tr>
+		<tr>
+			<td class="label">Next Shot:</td>
+			<td class="monitor" data-pv="TS01FPC01:TOPUP_COUNT_DOWN_MONITOR"></td>
+			<td class="label">s</td>
+		</tr>
+		<tr>
+			<td class="label">Delta Current:</td>
+			<td class="monitor" data-pv="SR00IE01:LATCHED_DELTA_CURRENT_MONITOR"></td>
+			<td class="label">mA</td>
+		</tr>
+		<tr>
+			<td class="label">BR Current:</td>
+			<td class="monitor" data-pv="SR00IE01:LATCHED_EXT_CURRENT_MONITOR"></td>
+			<td class="label">mA</td>
+		</tr>
+	</table>
+	</fieldset></div>
+	</td>
+	<td>
+	<div class = "table1">
+	<fieldset class="qtBorder"><legend class="qtLabel">Beam/Tunes:</legend>
+	<table>
+		<tr>
+			<td class="label">  </td>
+			<td class="label"> X</td>
+			<td class="label"> Y</td>
+		</tr>
+		<tr>
+			<td class="label">XDB Offset (um):</td>
+			<td class="monitor" data-pv="SR10BM02IMG01:X_OFFSET_MONITOR"></td>
+			<td class="monitor" data-pv="SR10BM02IMG01:Y_OFFSET_MONITOR"></td>
+		</tr>
+		<tr>
+			<td class="label">FWHM (um):</td>
+			<td class="monitor" data-pv="SR10BM02IMG01:X_SIZE_MONITOR"></td>
+			<td class="monitor" data-pv="SR10BM02IMG01:Y_SIZE_MONITOR"></td>
+		</tr>
+		<tr>
+			<td class="label">BPM STD(um):</td>
+			<td class="monitor" data-pv="SR00BPM00:ALT_STD_SA_X_MONITOR"></td>
+			<td class="monitor" data-pv="SR00BPM00:ALT_STD_SA_Y_MONITOR"></td>
+		</tr>
+		<tr>
+			<td class="label">BbB Tunes:</td>
+			<td class="monitor" data-pv="IGPF:X:SRAM:PEAKTUNE2"></td>
+			<td class="monitor" data-pv="IGPF:Y:SRAM:PEAKTUNE2"></td>
+		</tr>
+	</table>
+	</fieldset></div>	
+	</td>
+	<td><center>
+	<div class = "table1">
+	<fieldset class="qtBorder"><legend class="qtLabel">Feedbacks:</legend>
+	<table>
+		<tr>
+			<td class="statusMon" data-pv="SR00SOF01:STATUS">SOFB</td>
+		</tr>
+		<tr>
+			<td class="statusMon" data-pv="SR00BPM00:AGC_MONITOR">AGC</td>
+		</tr>
+		<tr>
+			<td class="statusMon" data-pv="IGPF:FBCTRL_CALC">BBB</td>
+		</tr>
+		<tr>
+			<td class="notYet">FOFB</td>
+		</tr>
+		<tr>
+			<td class="statusMon" data-pv="SR07RF01PT01:MODE_STATUS">Phase</td>
+		</tr>
+	</table></center>
+	</fieldset></div>	
+	</td>		
+	</tr>
+	</table>
+	<!third row for SR Magnet Sums->
+	<div class = "table1">
+	<table>
+		<td>
+		<div class = "table2">
+		<fieldset class="qtBorder"><legend class="qtLabel">SR Magnets:</legend>
+		<table>
+			<tr>
+			<td class="statusMon" data-pv="SR00APS00:OFF_ON_STATUS"><center> D</center></td>
+			<td class="statusMon" data-pv="SR01MPS00:OFF_ON_STATUS"><center>01</center></td>
+			<td class="statusMon" data-pv="SR02MPS00:OFF_ON_STATUS"><center>02</center></td>
+			<td class="statusMon" data-pv="SR03MPS00:OFF_ON_STATUS"><center>03</center></td>
+			<td class="statusMon" data-pv="SR04MPS00:OFF_ON_STATUS"><center>04</center></td>
+			<td class="statusMon" data-pv="SR05MPS00:OFF_ON_STATUS"><center>05</center></td>
+			<td class="statusMon" data-pv="SR06MPS00:OFF_ON_STATUS"><center>06</center></td>
+			<td class="statusMon" data-pv="SR07MPS00:OFF_ON_STATUS"><center>07</center></td>
+			<td class="statusMon" data-pv="SR08MPS00:OFF_ON_STATUS"><center>08</center></td>
+			<td class="statusMon" data-pv="SR09MPS00:OFF_ON_STATUS"><center>09</center></td>
+			<td class="statusMon" data-pv="SR10MPS00:OFF_ON_STATUS"><center>10</center></td>
+			<td class="statusMon" data-pv="SR11MPS00:OFF_ON_STATUS"><center>11</center></td>
+			<td class="statusMon" data-pv="SR12MPS00:OFF_ON_STATUS"><center>12</center></td>
+			<td class="statusMon" data-pv="SR13MPS00:OFF_ON_STATUS"><center>13</center></td>
+			<td class="statusMon" data-pv="SR14MPS00:OFF_ON_STATUS"><center>14</center></td>
+			</tr>
+			<tr>
+			<td class="ph"><center> D</center></td>
+			</tr>	
+		</table></fieldset></div>
+		</td>
+		<td>
+		<div class = "table2">
+		<fieldset class="qtBorder"><legend class="qtLabel">SR Orbit Interlocks:</legend>
+		<table>
+			<tr>
+			<td class="statusMon" data-pv="SR01OI01:EPS_OOS_STATUS"><center>01</center></td>
+			<td class="statusMon" data-pv="SR02OI01:EPS_OOS_STATUS"><center>02</center></td>
+			<td class="statusMon" data-pv="SR03OI01:EPS_OOS_STATUS"><center>03</center></td>
+			<td class="statusMon" data-pv="SR04OI01:EPS_OOS_STATUS"><center>04</center></td>
+			<td class="statusMon" data-pv="SR05OI01:EPS_OOS_STATUS"><center>05</center></td>
+			<td class="statusMon" data-pv="SR06OI01:EPS_OOS_STATUS"><center>06</center></td>
+			<td class="statusMon" data-pv="SR07OI01:EPS_OOS_STATUS"><center>07</center></td>
+			<td class="statusMon" data-pv="SR08OI01:EPS_OOS_STATUS"><center>08</center></td>
+			<td class="statusMon" data-pv="SR09OI01:EPS_OOS_STATUS"><center>09</center></td>
+			<td class="statusMon" data-pv="SR10OI01:EPS_OOS_STATUS"><center>10</center></td>
+			<td class="statusMon" data-pv="SR11OI01:EPS_OOS_STATUS"><center>11</center></td>
+			<td class="statusMon" data-pv="SR12OI01:EPS_OOS_STATUS"><center>12</center></td>
+			<td class="statusMon" data-pv="SR13OI01:EPS_OOS_STATUS"><center>13</center></td>
+			<td class="statusMon" data-pv="SR14OI01:EPS_OOS_STATUS"><center>14</center></td>
+			</tr>
+			<tr>
+			<td class="ph"><center> D</center></td>
+			</tr>	
+		</table></fieldset></div>
+		</td>
+		<td>
+		<div class = "table2">
+		<fieldset class="qtBorder"><legend class="qtLabel">Beamline Statuses:</legend>
+		<table>
+			<tr>
+			<td class="statusMon" data-pv="SR02IR01MIR01:POSITION_STATUS"><center>IR</center></td>
+			<td class="statusMon" data-pv="PP00SR03FE01PSH01:CLOSED_STATUS"><center>MX1</center></td>
+			<td class="statusMon" data-pv="PP00SR03FE02PSH01:CLOSED_STATUS"><center>MX2</center></td>
+			<td class="statusMon" data-pv="PP00SR05FE01PSH01:CLOSED_STATUS"><center>XFM</center></td>
+			<td class="statusMon" data-pv="PP00SR08FE01PSH01:CLOSED_STATUS"><center>IMT</center></td>
+			<td class="statusMon" data-pv="PP00SR10FE02PSH01:CLOSED_STATUS"><center>PD</center></td>
+			<td class="statusMon" data-pv="PP00SR12FE01PSH01:CLOSED_STATUS"><center>XAS</center></td>
+			<td class="statusMon" data-pv="PP00SR13FE01PSH01:CLOSED_STATUS"><center>SWX</center></td>
+			<td class="statusMon" data-pv="PP00SR14FE01PSH01:CLOSED_STATUS"><center>SX</center></td>	
+			</tr>
+			<tr>
+			<td class="monitor" data-pv="SR02IR01MIR01:POSITION_STATUS"></td>
+			<td class="label"> N/A </td>
+			<td class="monitor" data-pv="SR03ID01:GAP_MONITOR"></td>
+			<td class="monitor" data-pv="SR05ID01:GAP_MONITOR"></td>
+			<td class="monitor" data-pv="SR08SCW01:FIELD_MONITOR"></td>
+			<td class="label"> N/A </td>
+			<td class="monitor" data-pv="SR12ID01:GAP_MONITOR"></td>
+			<td class="monitor" data-pv="SR13ID01:GAP_MONITOR"></td>
+			<td class="monitor" data-pv="SR14ID01:GAP_MONITOR"></td>	
+			</tr>		
+		</table></fieldset></div>
+		</td>
+	</table></div>
+	</tr>	
+	</table></center></div>
+	<!4th row for injection magnets which don't have PVs yet>
+	<div class = "table1">
+	<center><table>
+		<tr>
+		<td>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">Linac Magnets:</legend>
+		<table>
+				<tr>
+				<td class="notYet">SOL</td>
+				<td class="notYet"> H </td>
+				<td class="notYet"> V </td>
+				<td class="notYet"> Q </td>
+				</tr>
+		</table>
+
+		</td>
+		<td>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">LtB Magnets:</legend>
+		<table>
+				<tr>
+				<td class="notYet"> D </td>
+				<td class="notYet"> H </td>
+				<td class="notYet"> V </td>
+				<td class="notYet"> Q </td>
+				</tr>
+		</table>
+		</td>
+		<td>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">BR Magnets:</legend>
+		<table>
+				<tr>
+				<td class="notYet"> D </td>
+				<td class="notYet"> H </td>
+				<td class="notYet"> V </td>
+				<td class="notYet"> Q </td>
+				<td class="notYet"> S </td>
+				</tr>
+		</table>
+		</td>
+		<td>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">BTS Magnets:</legend>
+		<table>
+				<tr>
+				<td class="notYet"> D </td>
+				<td class="notYet"> V </td>
+				<td class="notYet"> Q </td>
+				</tr>
+		</table>
+		</td>
+
+		</tr>
+	</table></div></center>
+	<!5th row for screens and valves, fast magnets, Injection RF, and SR RF>
+	<div class ="table1">
+	<center><table>
+		<tr>
+		<td><center>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">Screens & Valves:</legend>
+		<table>
+				<tr><td class="statusMon" data-pv="IS00DSC00:STATUS_MONITOR"> IS Screens </td></tr>
+				<tr><td class="statusMon" data-pv="VVR-IS:SUM_OPEN_STATUS_MONITOR"> IS Valves </td></tr>
+				<tr><td class="statusMon" data-pv="DSC-A-4-1:POSITION_STATUS"> SR Screens </td></tr>
+				<tr><td class="statusMon" data-pv="SR00SGV00:OPEN_CLOSE_STATUS"> SR Valves </td></tr>
+		</table>
+		</center></td>
+
+		<td><center>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">Fast Magnets:</legend>
+		<table>
+				<tr><td class="statusMon" data-pv="BR00MPS00:INJECTION_STATUS"> BR Injection </td></tr>
+				<tr><td class="statusMon" data-pv="BR00MPS00:RAMP_DOWNLOAD_STATUS"> Ramping Mags </td></tr>
+				<tr><td class="statusMon" data-pv="BR00MPS00:EXTRACTION_STATUS"> BR Extraction </td></tr>
+				<tr><td class="statusMon" data-pv="SR00MPS00:INJECTION_STATUS"> SR Injection </td></tr>
+		</table>
+		</center></td>
+
+		<td><center>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">Injection RF:</legend>
+		<table>
+				<tr><td class="statusMon" data-pv="LI-RF-GUN-01:STATUS_MONITOR"> E-Gun </td><td class="monitor" data-pv="LI-RF-GUN-01:SETV03"></td></tr>
+				<tr><td class="notYet"> Klystron 1 </td><td class="monitor" data-pv="LI-RF-AMPL-01:PFN:HV"></td></tr>
+				<tr><td class="notYet"> Klystron 2 </td><td class="monitor" data-pv="LI-RF-AMPL-02:PFN:HV"></td></tr>
+				<tr><td class="statusMon" data-pv="BR01RF01:STATUS_MONITOR"> BORF </td></tr>
+		</table>
+		</center></td>
+
+		<td><center>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">SR RF:</legend>
+		<table>
+				<tr><td class="statusMon" data-pv="SR06RF01:STATUS_MONITOR"> 601 </td><td class="monitor" data-pv="SR06RF01CAV01:VOLTAGE_MONITOR"></td></tr>
+				<tr><td class="notYet"> 602 </td><td class="monitor" data-pv="SR06RF02CAV01:VOLTAGE_MONITOR"></td></tr>
+				<tr><td class="notYet"> 701 </td><td class="monitor" data-pv="SR07RF01CAV01:VOLTAGE_MONITOR"></td></tr>
+				<tr><td class="notYet"> 702 </td><td class="monitor" data-pv="SR07RF02CAV01:VOLTAGE_MONITOR"></td></tr>
+		</table>
+		</center></td>
+
+		<td><center>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">SR Scrapers:</legend>
+		<table>
+				<tr><td class="label"> Upper: </td><td class="monitor" data-pv="SR11SCR01:UPPER_POSITION_MONITOR"></td></tr>
+				<tr><td class="label"> Inner: </td><td class="monitor" data-pv="SR11SCR01:INNER_POSITION_MONITOR"></td></tr>
+				<tr><td class="label"> Outer: </td><td class="monitor" data-pv="SR11SCR01:OUTER_POSITION_MONITOR"></td></tr>
+				<tr><td class="label"> Lower: </td><td class="monitor" data-pv="SR11SCR01:LOWER_POSITION_MONITOR"></td></tr>
+		</table>
+		</center></td>
+
+		<td><center>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">BTS Scrapers:</legend>
+		<table>
+				<tr><td class="label"> Upper: </td><td class="monitor" data-pv="BTS01SLH01:UPPER_POSITION_MONITOR"></td></tr>
+				<tr><td class="ph"> U </td><td class="ph"> U </td></tr>
+				<tr><td class="ph"> L </td><td class="ph"> L </td></tr>
+				<tr><td class="label"> Lower: </td><td class="monitor" data-pv="BTS01SLH01:LOWER_POSITION_MONITOR"></td></tr>
+
+		</table>
+		</center></td>
+		
+		<td><center>
+		<div class = "table3">
+		<fieldset class="qtBorder"><legend class="qtLabel">Radiation (uSv/Hr):</legend>
+		<table>
+				<tr><td class="label"> Capture (SR02): </td><td class="monitor" data-pv="SR02VRM01:DOSE_RATE_MONITOR"></td></tr>
+				<tr><td class="label"> Scrapers (SR12): </td><td class="monitor" data-pv="SR12NRM01:DOSE_RATE_MONITOR"></td></tr>
+				<tr><td class="label"> Injection (SR14): </td><td class="monitor" data-pv="SR14VRM01:DOSE_RATE_MONITOR"></td></tr>
+				<tr><td class="ph"> L </td><td class="ph"> L </td></tr>
+
+		</table>
+		</center></td>
+
+		</tr>
+	</table></center></div>
+	<! Last row for charts>
+	
+	<div style="width:100%;">
+
+		<td><div id="chartContainer" style="width:100%;"></div></td>
+
+	</div>
+
+</body>
+</html>
