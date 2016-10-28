@@ -55,7 +55,7 @@ class PycaServerApplication(WebSocketApplication):
       #Manually send the connection established message, since the PV callback is long-since fired.
       self.monitor_connection_callback(pvname=pvname, conn=True)
       #Manually send the latest value of the PV to a new connection.  Important for PVs that update very infrequently.
-      self.monitor_update_callback(pvname=pvname, value=self.pvs[pvname].value, units=self.pvs[pvname].units, timestamp=self.pvs[pvname].timestamp, count=self.pvs[pvname].count)
+      self.monitor_update_callback(pvname=pvname, value=self.pvs[pvname].value, units=self.pvs[pvname].units, timestamp=self.pvs[pvname].timestamp, count=self.pvs[pvname].count, severity=self.pvs[pvname].severity)
     else:
       self.pvs[pvname] = epics.PV(pvname, form='ctrl', callback=self.monitor_update_callback, connection_callback=self.monitor_connection_callback)
       self.pvs[pvname].connections = set()
@@ -71,8 +71,8 @@ class PycaServerApplication(WebSocketApplication):
         del self.pvs[pvname]
         logger.debug("PV {0} disconnected.".format(pvname))
     
-  def monitor_update_callback(self, pvname=None, value=None, units=None, timestamp=None, **kw):
-    response = { "msg_type": "monitor", "pvname": pvname, "value": value, "count": kw['count'], "timestamp": timestamp }
+  def monitor_update_callback(self, pvname=None, value=None, units=None, timestamp=None, severity=None, **kw):
+    response = { "msg_type": "monitor", "pvname": pvname, "value": value, "count": kw['count'], "timestamp": timestamp, "severity": severity }
     if units:
       response['units'] = units
       self.units[pvname] = units
@@ -110,6 +110,7 @@ wsgi_app = Resource(OrderedDict([('^/monitor$', PycaServerApplication), ('^/*', 
 def start():
   logger.info("Starting pycaserver.")
   host = "127.0.0.1"
+  #host = "10.6.0.33"
   port = 8888
   server = WebSocketServer((host, port), wsgi_app)
   server.serve_forever()
